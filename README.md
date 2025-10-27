@@ -1,17 +1,16 @@
-# TP1 Exercice 4 : Stack Complète avec Docker Compose
+# Fullstack App - Exercice 4 TP Orchestration Docker Compose
 
-> **Orchestration d’une application web complète avec base de données et cache à l’aide de Docker Compose**
+> **Orchestration complète d’une API Flask (Python) avec PostgreSQL, Redis et Adminer via Docker Compose**
+
+<img width="788" height="606" alt="image" src="https://github.com/user-attachments/assets/549e9df9-f569-48a7-8931-0518a72689fe" />
 
 
-<img width="836" height="886" alt="image" src="https://github.com/user-attachments/assets/d4baaece-f6bc-483e-b452-ad1cfbbfbd85" />
-
-
-Ce projet met en œuvre une **stack applicative complète** composée de :
-- Une **application web** (Node.js + Express)
-- Une **base de données** (MySQL)
-- Un **système de cache** (Redis)
-
-Le tout est orchestré via **Docker Compose**, permettant un déploiement rapide, reproductible et isolé.
+Ce projet met en œuvre une **stack fullstack containerisée** avec :
+- Une **API REST CRUD** en **Python Flask**
+- Une base de données **PostgreSQL** (persistance)
+- Un **cache Redis** pour les sessions utilisateur
+- **Adminer** pour administrer la base
+- **Health checks** et **dépendances entre services**
 
 ---
 
@@ -20,12 +19,13 @@ Le tout est orchestré via **Docker Compose**, permettant un déploiement rapide
 - [Aperçu](#aperçu)
 - [Architecture](#architecture)
 - [Prérequis](#prérequis)
+- [Structure du projet](#structure-du-projet)
 - [Installation](#installation)
 - [Lancement](#lancement)
-- [Utilisation](#utilisation)
-- [Structure du projet](#structure-du-projet)
-- [Configuration](#configuration)
-- [Tests](#tests)
+- [Endpoints API](#endpoints-api)
+- [Accès à Adminer](#accès-à-adminer)
+- [Tests de connectivité](#tests-de-connectivité)
+- [Health Checks](#health-checks)
 - [Arrêt et nettoyage](#arrêt-et-nettoyage)
 - [Dépannage](#dépannage)
 - [Auteurs](#auteurs)
@@ -34,11 +34,11 @@ Le tout est orchestré via **Docker Compose**, permettant un déploiement rapide
 
 ## Aperçu
 
-Ce projet illustre une architecture microservices légère mais réaliste :
-- L’**application web** expose une API REST simple.
-- Elle **persiste les données** dans une base MySQL.
-- Elle utilise **Redis** comme cache pour accélérer les requêtes fréquentes.
-- Tout est **containerisé** et orchestré avec `docker-compose.yml`.
+Une API Flask expose des **opérations CRUD** sur des utilisateurs :
+- Stockage persistant dans **PostgreSQL**
+- Cache des sessions avec **Redis**
+- Administration visuelle via **Adminer**
+- Tout est orchestré avec **Docker Compose**
 
 ---
 
@@ -46,28 +46,30 @@ Ce projet illustre une architecture microservices légère mais réaliste :
 
 ```
 +----------------+       +----------------+       +----------------+
-|   Frontend     | <---> |  API (Node.js) | <---> |  MySQL         |
-|   (Browser)    |       |  (app)         |       |  (DB)          |
+|   Client       | <---> |   Flask API    | <---> |  PostgreSQL    |
+| (curl/Postman) |       |    (web)       |       |     (db)       |
 +----------------+       +--------+-------+       +--------+-------+
                                   ^                    ^
                                   |                    |
                              +----+-----+      +-------+--------+
                              |  Redis   |      | Docker Network |
-                             | (Cache)  |      | (bridge)       |
-                             +----------+      +----------------+
+                             | (cache)  |      | (bridge)       |
+                             +----------+      +-------+--------+
+                                          \
+                                      +----------+
+                                      | Adminer  |
+                                      | (admin)  |
+                                      +----------+
 ```
 
 ---
 
 ## Prérequis
 
-Assurez-vous d’avoir installé :
-
 - [Docker](https://www.docker.com/get-started) (≥ 20.10)
 - [Docker Compose](https://docs.docker.com/compose/install/) (≥ v2.0)
-- Un terminal (Linux, macOS, ou Windows avec WSL2)
 
-> Vérifiez avec :
+> Vérifiez :
 > ```bash
 > docker --version
 > docker compose version
@@ -75,155 +77,235 @@ Assurez-vous d’avoir installé :
 
 ---
 
+## Structure du projet
+
+```
+fullstack-app/
+├── docker-compose.yml
+├── .env
+├── web/
+│   ├── app.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── data/                   # Volume persistant (créé automatiquement)
+└── README.md
+```
+
+---
+
 ## Installation
 
-1. **Clonez le dépôt** :
+1. **Créez le dossier et entrez-y** :
    ```bash
-   git clone https://github.com/malakzaidi/ZAIDI-ELHABTI-Tp1-exo4-complete-stack-docker-compose.git
-   cd ZAIDI-ELHABTI-Tp1-exo4-complete-stack-docker-compose
+   mkdir fullstack-app && cd fullstack-app
    ```
 
-2. **Vérifiez la présence des fichiers** :
-   - `docker-compose.yml`
-   - `app/` (code de l’application Node.js)
-   - `docker/` (Dockerfiles si nécessaire)
-   - `.env` (variables d’environnement)
+2. **Créez la structure** :
+   ```bash
+   mkdir web && touch web/app.py web/requirements.txt web/Dockerfile .env docker-compose.yml
+   ```
+
+3. **Collez les fichiers** (voir sections ci-dessous)
 
 ---
 
 ## Lancement
 
-### Démarrer toute la stack
-
 ```bash
 docker compose up -d
 ```
 
-> L’option `-d` lance les conteneurs en arrière-plan.
+> Attend 15-20 secondes pour l'initialisation de PostgreSQL.
 
-### Vérifier que tout fonctionne
-
+Vérifiez les conteneurs :
 ```bash
 docker compose ps
 ```
 
-Vous devriez voir 3 services en état `Up` :
-- `app` (port 3000)
-- `mysql` (port 3306)
-- `redis` (port 6379)
-
 ---
 
-## Utilisation
+## Endpoints API
 
-### Accéder à l’API
+| Méthode | URL                  | Description |
+|--------|----------------------|-----------|
+| `POST`   | `/users`             | Créer un utilisateur |
+| `GET`    | `/users`             | Lister tous les utilisateurs |
+| `GET`    | `/users/<id>`        | Récupérer un utilisateur |
+| `PUT`    | `/users/<id>`        | Mettre à jour un utilisateur |
+| `DELETE` | `/users/<id>`        | Supprimer un utilisateur |
 
-Ouvrez votre navigateur ou utilisez `curl` :
-
-```bash
-curl http://localhost:3000
-```
-
-**Endpoints disponibles** :
-
-| Méthode | URL               | Description |
-|--------|-------------------|-----------|
-| `GET`  | `/`               | Message de bienvenue |
-| `GET`  | `/users`          | Liste les utilisateurs (avec cache Redis) |
-| `POST` | `/users`          | Ajoute un utilisateur (JSON) |
-
-#### Exemple : Ajouter un utilisateur
+### Exemple : Créer un utilisateur
 
 ```bash
-curl -X POST http://localhost:3000/users \
+curl -X POST http://localhost:5000/users \
   -H "Content-Type: application/json" \
   -d '{"name": "Alice", "email": "alice@example.com"}'
 ```
 
-> La première requête `/users` sera lente (lecture DB), les suivantes seront **instantanées** grâce au cache Redis.
+### Lister les utilisateurs
 
----
-
-## Structure du projet
-
-```
-.
-├── docker-compose.yml          # Orchestration des services
-├── .env                        # Variables d'environnement
-├── app/
-│   ├── server.js               # Application Express
-│   ├── db.js                   # Connexion MySQL
-│   ├── cache.js                # Client Redis
-│   └── package.json
-├── docker/
-│   └── app.Dockerfile          # (Optionnel) Image personnalisée
-└── README.md                   # Ce fichier
+```bash
+curl http://localhost:5000/users
 ```
 
 ---
 
-## Configuration
+## Accès à Adminer
 
-### Fichier `.env`
+Ouvrez dans le navigateur :
+[http://localhost:8080](http://localhost:8080)
 
+**Identifiants Adminer** :
+- **Système** : `PostgreSQL`
+- **Serveur** : `db`
+- **Utilisateur** : `appuser`
+- **Mot de passe** : `apppass`
+- **Base de données** : `appdb`
+
+---
+
+## Tests de connectivité
+
+### 1. Vérifier Flask
+```bash
+curl http://localhost:5000/
+```
+
+### 2. Vérifier PostgreSQL
+```bash
+docker exec -it db psql -U appuser -d appdb -c "SELECT NOW();"
+```
+
+### 3. Vérifier Redis
+```bash
+docker exec -it cache redis-cli PING
+# → PONG
+```
+
+### 4. Vérifier Adminer
+→ Ouvrir [http://localhost:8080](http://localhost:8080)
+
+---
+
+## Health Checks
+
+Tous les services ont un **health check** configuré :
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+```
+
+- **Flask** : `GET /health`
+- **PostgreSQL** : `pg_isready`
+- **Redis** : `redis-cli ping`
+- **Adminer** : vérification du port
+
+---
+
+## Fichiers clés
+
+### `web/requirements.txt`
+```txt
+Flask==2.3.3
+psycopg2-binary==2.9.7
+redis==5.0.1
+gunicorn==21.2.0
+```
+
+### `web/Dockerfile`
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app.py .
+
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+```
+
+### `.env`
 ```env
-# MySQL
-MYSQL_ROOT_PASSWORD=rootpassword
-MYSQL_DATABASE=appdb
-MYSQL_USER=appuser
-MYSQL_PASSWORD=apppass
+POSTGRES_USER=appuser
+POSTGRES_PASSWORD=apppass
+POSTGRES_DB=appdb
+POSTGRES_HOST=db
 
-# Redis
-REDIS_PASSWORD=redispass
+REDIS_HOST=cache
+REDIS_PORT=6379
 
-# App
-PORT=3000
-DB_HOST=mysql
-REDIS_HOST=redis
+FLASK_ENV=production
 ```
 
-> **Ne commitez jamais `.env` en production !** Utilisez `.gitignore`.
+### `docker-compose.yml` (extrait clé)
+```yaml
+services:
+  web:
+    build: ./web
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
----
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-## Tests
+  cache:
+    image: redis:7
+    command: redis-server --requirepass redispassword
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
-### Vérifier la connexion à MySQL
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
 
-```bash
-docker exec -it mysql mysql -u appuser -p'apppass' -e "SELECT NOW();"
-```
-
-### Vérifier Redis
-
-```bash
-docker exec -it redis redis-cli -a redispass PING
-# Réponse attendue : PONG
-```
-
-### Logs de l’application
-
-```bash
-docker compose logs -f app
+volumes:
+  postgres_data:
 ```
 
 ---
 
 ## Arrêt et nettoyage
 
-### Arrêter les conteneurs
-
 ```bash
+# Arrêter
 docker compose down
-```
 
-### Supprimer les volumes (données persistantes)
-
-```bash
+# Supprimer les volumes (données perdues)
 docker compose down -v
 ```
-
-> Attention : cela supprime la base de données !
 
 ---
 
@@ -231,28 +313,25 @@ docker compose down -v
 
 | Problème | Solution |
 |--------|---------|
-| `Connection refused` MySQL | Attendez 10-20s après `up` (initialisation DB) |
-| Port 3000 déjà utilisé | Changez `PORT` dans `.env` ou libérez le port |
-| Redis auth failed | Vérifiez `REDIS_PASSWORD` dans `.env` et `docker-compose.yml` |
-| Données non persistantes | Vérifiez les volumes dans `docker-compose.yml` |
+| `web` ne démarre pas | Attendez que `db` soit `healthy` (`depends_on`) |
+| Connexion PostgreSQL refusée | Vérifiez `.env` et redémarrez |
+| Redis auth error | Mot de passe dans `docker-compose.yml` doit être `redispassword` |
+| Port 5000/8080 occupé | Changez les ports dans `docker-compose.yml` |
 
 ---
 
 ## Auteurs
 
-- **Malak Zaidi** – [malakzaidi](https://github.com/malakzaidi)
-- **Elhabti** – Co-auteur
+- **ZAIDI Malak**
+- **ELHABTI**
 
 ---
 
 ## Licence
 
-Ce projet est à usage pédagogique dans le cadre du TP1.
+Projet réalisé dans le cadre du **TP Orchestration Docker Compose**.
 
 ---
 
-> **Projet réalisé avec ❤️ pour l'apprentissage de Docker & Docker Compose**
+> **Stack prête à l’emploi, robuste et pédagogique**
 ```
-
-Votre dépôt sera désormais **professionnel, clair et prêt pour l’évaluation** !  
-Besoin d’une version anglaise ou d’un badge ? Dites-moi !
