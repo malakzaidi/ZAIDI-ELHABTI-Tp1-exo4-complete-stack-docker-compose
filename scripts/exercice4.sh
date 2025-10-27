@@ -1,7 +1,7 @@
 
 ---
 
-## 2️⃣ `exercice4.sh`
+## 2`exercice4.sh`
 
 ```bash
 #!/bin/bash
