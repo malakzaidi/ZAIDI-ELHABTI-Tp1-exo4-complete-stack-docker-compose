@@ -45,7 +45,6 @@ services:
       timeout: 5s
       retries: 5
 
-
   adminer:
     image: adminer
     container_name: adminer_ui
