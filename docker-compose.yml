@@ -11,6 +11,10 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       REDIS_HOST: redis_cache
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
+      interval: 10s
+      retries: 5
     depends_on:
       - db
       - redis_cache

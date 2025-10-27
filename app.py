@@ -123,5 +123,33 @@ def delete_user(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+@app.route("/health", methods=["GET"])
+def health():
+    status = {"postgres": False, "redis": False}
+
+    # Tester PostgreSQL
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.fetchone()
+        cur.close()
+        status["postgres"] = True
+    except:
+        status["postgres"] = False
+
+    # Tester Redis
+    try:
+        if cache.ping():
+            status["redis"] = True
+    except:
+        status["redis"] = False
+
+    # Déterminer le code HTTP
+    http_status = 200 if all(status.values()) else 500
+    return jsonify(status), http_status
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
+
